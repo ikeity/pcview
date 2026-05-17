@@ -42,4 +42,31 @@ public sealed class AppEntryMergerTests
 
         Assert.AreEqual(2, apps.Count);
     }
+
+    [TestMethod]
+    public void MergeRegistryDuplicates_PreservesResidueFlag()
+    {
+        var apps = AppEntryMerger.MergeRegistryDuplicates([
+            new AppEntry
+            {
+                Id = "a",
+                Name = "Removed Game",
+                Publisher = "Publisher",
+                InstallLocation = "C:\\Removed",
+                Source = AppSource.Registry
+            },
+            new AppEntry
+            {
+                Id = "b",
+                Name = "Removed Game",
+                Publisher = "Publisher",
+                InstallLocation = "C:\\Removed",
+                Source = AppSource.Registry,
+                IsPotentialUninstallEntryResidue = true
+            }
+        ]);
+
+        Assert.AreEqual(1, apps.Count);
+        Assert.IsTrue(apps[0].IsPotentialUninstallEntryResidue);
+    }
 }

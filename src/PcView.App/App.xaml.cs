@@ -51,8 +51,8 @@ public partial class App : Wpf.Application
     private void CreateTrayIcon()
     {
         var menu = new Forms.ContextMenuStrip();
-        menu.Items.Add("Open PcView", null, (_, _) => Dispatcher.Invoke(ShowMainWindow));
-        menu.Items.Add("Scan", null, async (_, _) =>
+        menu.Items.Add(AppText.Get("Tray.Open"), null, (_, _) => Dispatcher.Invoke(ShowMainWindow));
+        menu.Items.Add(AppText.Get("Tray.Scan"), null, async (_, _) =>
         {
             await Dispatcher.InvokeAsync(ShowMainWindow);
             if (_mainWindow is not null)
@@ -61,7 +61,7 @@ public partial class App : Wpf.Application
             }
         });
         menu.Items.Add(new Forms.ToolStripSeparator());
-        menu.Items.Add("Exit", null, (_, _) => Dispatcher.Invoke(() =>
+        menu.Items.Add(AppText.Get("Tray.Exit"), null, (_, _) => Dispatcher.Invoke(() =>
         {
             _isExiting = true;
             Shutdown();

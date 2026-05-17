@@ -51,7 +51,11 @@ internal static class AppEntryMerger
             Version = FirstNonEmpty(entries.Select(entry => entry.Version)),
             InstallDate = FirstNonEmpty(entries.Select(entry => entry.InstallDate)),
             Publisher = FirstNonEmpty(entries.Select(entry => entry.Publisher)),
-            InstallLocation = FirstNonEmpty(entries.Select(entry => entry.InstallLocation))
+            InstallLocation = FirstNonEmpty(entries.Select(entry => entry.InstallLocation)),
+            RegistryKeyPath = FirstNonEmpty(entries.Select(entry => entry.RegistryKeyPath)),
+            DisplayIconPath = FirstNonEmpty(entries.Select(entry => entry.DisplayIconPath)),
+            UninstallCommandPath = FirstNonEmpty(entries.Select(entry => entry.UninstallCommandPath)),
+            IsPotentialUninstallEntryResidue = entries.Any(entry => entry.IsPotentialUninstallEntryResidue)
         };
     }
 

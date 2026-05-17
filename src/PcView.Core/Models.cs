@@ -51,6 +51,10 @@ public sealed record AppEntry
     public string? InstallLocation { get; init; }
     public string? PrimaryExecutable { get; init; }
     public string? UninstallCommand { get; init; }
+    public string? RegistryKeyPath { get; init; }
+    public string? DisplayIconPath { get; init; }
+    public string? UninstallCommandPath { get; init; }
+    public bool IsPotentialUninstallEntryResidue { get; init; }
     public AppSource Source { get; init; }
     public IReadOnlyList<ExecutableEntry> Executables { get; init; } = [];
     public EvidenceRecord LastRunEvidence { get; init; } = EvidenceRecord.Unknown;

@@ -18,6 +18,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        ApplyLocalization();
         AppsGrid.ItemsSource = _visibleApps;
         _isInitialized = true;
         UpdateOverview();
@@ -42,7 +43,7 @@ public partial class MainWindow : Window
     private async Task ScanAsync(bool refresh)
     {
         SetBusy(true);
-        StatusText.Text = refresh ? "Rebuilding the local index..." : "Scanning and reusing the local cache...";
+        StatusText.Text = refresh ? AppText.Get("Status.Rebuilding") : AppText.Get("Status.Scanning");
         try
         {
             _scanResult = await _scanner.ScanAsync(new ScanOptions { Refresh = refresh });
@@ -51,14 +52,14 @@ public partial class MainWindow : Window
             FolderCountText.Text = _scanResult.Apps.Count(app => app.Source == AppSource.Folder).ToString();
             DurationText.Text = $"{_scanResult.Duration.TotalMilliseconds:N0} ms";
             CacheText.Text = _scanResult.CachePath;
-            StatusText.Text = $"Completed. Generated at {_scanResult.GeneratedUtc.LocalDateTime:G}.";
+            StatusText.Text = AppText.Format("Status.Completed", _scanResult.GeneratedUtc.LocalDateTime);
             UpdateOverview();
             ApplyFilter();
         }
         catch (Exception ex)
         {
-            StatusText.Text = $"Scan failed: {ex.Message}";
-            System.Windows.MessageBox.Show(this, ex.Message, "Scan failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            StatusText.Text = AppText.Format("Status.ScanFailed", ex.Message);
+            System.Windows.MessageBox.Show(this, ex.Message, AppText.Get("Dialog.ScanFailed.Title"), MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
@@ -111,8 +112,8 @@ public partial class MainWindow : Window
         if (_scanResult is null)
         {
             SubtitleText.Text = isOverview
-                ? "Scan registered apps, shortcuts, common app folders, and local evidence."
-                : "Run a scan to populate this view.";
+                ? AppText.Get("Page.Subtitle.Default")
+                : AppText.Get("Page.Subtitle.NoScan");
             return;
         }
 
@@ -124,16 +125,66 @@ public partial class MainWindow : Window
         }
 
         SubtitleText.Text = _visibleApps.Count == _scanResult.Apps.Count
-            ? "Showing all scanned applications."
-            : $"Showing {_visibleApps.Count} of {_scanResult.Apps.Count} applications.";
+            ? AppText.Get("Page.Subtitle.All")
+            : AppText.Format("Page.Subtitle.Filtered", _visibleApps.Count, _scanResult.Apps.Count);
+    }
+
+    private void ApplyLocalization()
+    {
+        AppSubtitleText.Text = AppText.Get("App.Subtitle");
+        ScanButton.Content = AppText.Get("Action.Scan");
+        RefreshButton.Content = AppText.Get("Action.Rebuild");
+        ViewsLabelText.Text = AppText.Get("Nav.Views");
+        OverviewFilter.Content = AppText.Get("Nav.Overview");
+        ReviewFilter.Content = AppText.Get("Nav.Review");
+        AllFilter.Content = AppText.Get("Nav.All");
+        FolderFilter.Content = AppText.Get("Nav.Folders");
+        UnknownFilter.Content = AppText.Get("Nav.Unknown");
+        SafetyTitleText.Text = AppText.Get("Safety.Title");
+        SafetyBodyText.Text = AppText.Get("Safety.Body");
+
+        PageTitleText.Text = AppText.Get("Page.Title");
+        SubtitleText.Text = AppText.Get("Page.Subtitle.Default");
+        SearchLabelText.Text = AppText.Get("Search.Label");
+        SearchHint.Text = AppText.Get("Search.Hint");
+        AppsMetricLabelText.Text = AppText.Get("Metric.Apps");
+        ReviewMetricLabelText.Text = AppText.Get("Metric.Review");
+        FoldersMetricLabelText.Text = AppText.Get("Metric.Folders");
+        DurationMetricLabelText.Text = AppText.Get("Metric.Duration");
+
+        ReviewFocusTitleText.Text = AppText.Get("Overview.ReviewFocus");
+        EvidenceHealthTitleText.Text = AppText.Get("Overview.EvidenceHealth");
+        WorkflowTitleText.Text = AppText.Get("Overview.Workflow");
+        WorkflowStep1Text.Text = AppText.Get("Overview.Workflow.1");
+        WorkflowStep2Text.Text = AppText.Get("Overview.Workflow.2");
+        WorkflowStep3Text.Text = AppText.Get("Overview.Workflow.3");
+        SafeBoundaryTitleText.Text = AppText.Get("Overview.SafeBoundary");
+        SafeBoundaryBodyText.Text = AppText.Get("Overview.SafeBoundary.Body");
+
+        NameColumn.Header = AppText.Get("Column.Name");
+        PublisherColumn.Header = AppText.Get("Column.Publisher");
+        SourceColumn.Header = AppText.Get("Column.Source");
+        EvidenceColumn.Header = AppText.Get("Column.Evidence");
+        ReasonColumn.Header = AppText.Get("Column.Reason");
+
+        InspectorTitleText.Text = AppText.Get("Inspector.Title");
+        EvidenceSectionTitleText.Text = AppText.Get("Inspector.Evidence");
+        LocationSectionTitleText.Text = AppText.Get("Inspector.Location");
+        ReasonsSectionTitleText.Text = AppText.Get("Inspector.Reasons");
+        ExecutablesSectionTitleText.Text = AppText.Get("Inspector.Executables");
+        ActionsSectionTitleText.Text = AppText.Get("Inspector.Actions");
+        OpenFolderButton.Content = AppText.Get("Action.OpenFolder");
+        SelectExeButton.Content = AppText.Get("Action.LocateExecutable");
+        UninstallButton.Content = AppText.Get("Action.RunUninstall");
+        StatusText.Text = AppText.Get("Status.Ready");
     }
 
     private void UpdateOverview()
     {
         if (_scanResult is null)
         {
-            ReviewFocusText.Text = "Run a scan to build the review queue.";
-            EvidenceHealthText.Text = "Evidence confidence will appear after scanning.";
+            ReviewFocusText.Text = AppText.Get("Overview.ReviewFocus.Empty");
+            EvidenceHealthText.Text = AppText.Get("Overview.EvidenceHealth.Empty");
             TopReasonsList.ItemsSource = null;
             return;
         }
@@ -144,11 +195,10 @@ public partial class MainWindow : Window
         int mediumConfidenceCount = _scanResult.Apps.Count(app => app.LastRunEvidence.Confidence == EvidenceConfidence.Medium);
 
         ReviewFocusText.Text = _scanResult.ReviewCount == 0
-            ? "No review-worthy applications were found. Browse all apps if you want to inspect the full inventory."
-            : $"{_scanResult.ReviewCount} applications need review. Start with folder discoveries and unknown publishers.";
+            ? AppText.Get("Overview.ReviewFocus.None")
+            : AppText.Format("Overview.ReviewFocus.Some", _scanResult.ReviewCount);
 
-        EvidenceHealthText.Text =
-            $"{mediumConfidenceCount} apps have medium-confidence run evidence, {lowConfidenceCount} rely on low-confidence file access evidence, and {unknownEvidenceCount} have no run evidence.";
+        EvidenceHealthText.Text = AppText.Format("Overview.EvidenceHealth.Value", mediumConfidenceCount, lowConfidenceCount, unknownEvidenceCount);
 
         TopReasonsList.ItemsSource = _scanResult.Apps
             .SelectMany(app => app.Recommendation.Reasons)
@@ -189,8 +239,8 @@ public partial class MainWindow : Window
     {
         if (row is null)
         {
-            DetailNameText.Text = "Select an app";
-            DetailMetaText.Text = "Run a scan, then choose an item to inspect evidence and actions.";
+            DetailNameText.Text = AppText.Get("Inspector.EmptyName");
+            DetailMetaText.Text = AppText.Get("Inspector.EmptyMeta");
             EvidenceText.Text = "-";
             LocationText.Text = "-";
             ReasonsList.ItemsSource = null;
@@ -205,7 +255,7 @@ public partial class MainWindow : Window
         DetailNameText.Text = app.Name;
         DetailMetaText.Text = string.Join(" / ", new[] { row.Publisher, row.SourceLabel, app.Version }.Where(value => !string.IsNullOrWhiteSpace(value)));
         EvidenceText.Text = $"{row.LastRunLabel}; source: {app.LastRunEvidence.Source}; confidence: {ConfidenceLabel(app.LastRunEvidence.Confidence)}";
-        LocationText.Text = app.InstallLocation ?? "No install directory is available.";
+        LocationText.Text = app.InstallLocation ?? AppText.Get("Inspector.NoLocation");
         ReasonsList.ItemsSource = app.Recommendation.Reasons.Select(ReasonLabel).ToArray();
         ExecutablesList.ItemsSource = app.Executables.Select(exe => $"{exe.Name}  -  {exe.Path}").Take(30);
         OpenFolderButton.IsEnabled = !string.IsNullOrWhiteSpace(app.InstallLocation);
@@ -239,8 +289,8 @@ public partial class MainWindow : Window
 
         var result = System.Windows.MessageBox.Show(
             this,
-            $"PcView will run the official uninstall entry registered in Windows:\n\n{command}",
-            "Confirm uninstall entry",
+            AppText.Format("Dialog.Uninstall.Body", command),
+            AppText.Get("Dialog.Uninstall.Title"),
             MessageBoxButton.OKCancel,
             MessageBoxImage.Warning);
 
@@ -257,10 +307,10 @@ public partial class MainWindow : Window
     {
         return confidence switch
         {
-            EvidenceConfidence.Low => "low",
-            EvidenceConfidence.Medium => "medium",
-            EvidenceConfidence.High => "high",
-            _ => "unknown"
+            EvidenceConfidence.Low => AppText.Get("Confidence.Low"),
+            EvidenceConfidence.Medium => AppText.Get("Confidence.Medium"),
+            EvidenceConfidence.High => AppText.Get("Confidence.High"),
+            _ => AppText.Get("Confidence.Unknown")
         };
     }
 
@@ -268,16 +318,16 @@ public partial class MainWindow : Window
     {
         public AppEntry Entry { get; } = entry;
         public string Name => Entry.Name;
-        public string Publisher => string.IsNullOrWhiteSpace(Entry.Publisher) ? "Unknown publisher" : Entry.Publisher;
+        public string Publisher => string.IsNullOrWhiteSpace(Entry.Publisher) ? AppText.Get("Publisher.Unknown") : Entry.Publisher;
         public string SourceLabel => Entry.Source switch
         {
-            AppSource.Folder => "Folder",
-            AppSource.Shortcut => "Shortcut",
-            _ => "Uninstall list"
+            AppSource.Folder => AppText.Get("Source.Folder"),
+            AppSource.Shortcut => AppText.Get("Source.Shortcut"),
+            _ => AppText.Get("Source.UninstallList")
         };
         public string LastRunLabel => Entry.LastRunEvidence.TimestampUtc.HasValue
             ? Entry.LastRunEvidence.TimestampUtc.Value.LocalDateTime.ToString("yyyy-MM-dd")
-            : "Unknown";
+            : AppText.Get("Evidence.Unknown");
         public string ReasonSummary => string.Join(", ", Entry.Recommendation.Reasons.Select(ReasonLabel));
         public string PrimaryReason => ReasonLabel(Entry.Recommendation.Reasons.FirstOrDefault() ?? "Recent or clearly registered");
         public string ExtraReasonCount => Entry.Recommendation.Reasons.Count > 1
@@ -301,15 +351,16 @@ public partial class MainWindow : Window
 
     private static string ReasonLabel(string reason)
     {
-        if (reason == "Not in uninstall list") return "Not in uninstall list";
-        if (reason == "Unknown publisher") return "Unknown publisher";
-        if (reason == "Installed under user profile") return "Installed under user profile";
-        if (reason == "Last-run evidence unavailable") return "Last-run evidence unavailable";
-        if (reason == "Recent or clearly registered") return "Recent or clearly registered";
+        if (reason == "Not in uninstall list") return AppText.Get("Reason.NotInUninstallList");
+        if (reason == "Potential uninstall entry residue") return AppText.Get("Reason.UninstallResidue");
+        if (reason == "Unknown publisher") return AppText.Get("Reason.UnknownPublisher");
+        if (reason == "Installed under user profile") return AppText.Get("Reason.UserProfile");
+        if (reason == "Last-run evidence unavailable") return AppText.Get("Reason.NoLastRun");
+        if (reason == "Recent or clearly registered") return AppText.Get("Reason.Clear");
         if (reason.StartsWith("Not run for ", StringComparison.Ordinal))
         {
             var days = reason.Split(' ', StringSplitOptions.RemoveEmptyEntries).ElementAtOrDefault(3);
-            return $"{days} days without run evidence";
+            return AppText.Format("Reason.Stale", days ?? "?");
         }
 
         return reason;

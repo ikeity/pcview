@@ -50,6 +50,7 @@ public sealed class PcViewScanner
         {
             cancellationToken.ThrowIfCancellationRequested();
             var executables = InventoryDirectory(app.InstallLocation, cache, prefetch, options, cancellationToken);
+            var residue = IsPotentialUninstallEntryResidue(app, executables);
             if (!string.IsNullOrWhiteSpace(app.InstallLocation))
             {
                 knownDirectories.Add(app.InstallLocation);
@@ -60,7 +61,8 @@ public sealed class PcViewScanner
                 Executables = executables,
                 PrimaryExecutable = executables.FirstOrDefault()?.Path,
                 LastRunEvidence = BestEvidence(executables),
-                LastRunDays = DaysSince(BestEvidence(executables).TimestampUtc)
+                LastRunDays = DaysSince(BestEvidence(executables).TimestampUtc),
+                IsPotentialUninstallEntryResidue = residue
             }));
         }
 
@@ -101,6 +103,24 @@ public sealed class PcViewScanner
     private AppEntry FinalizeApp(AppEntry app)
     {
         return app with { Recommendation = _recommendations.Evaluate(app) };
+    }
+
+    private static bool IsPotentialUninstallEntryResidue(AppEntry app, IReadOnlyList<ExecutableEntry> executables)
+    {
+        if (app.Source != AppSource.Registry)
+        {
+            return false;
+        }
+
+        bool hasMissingInstallLocation = !string.IsNullOrWhiteSpace(app.InstallLocation)
+            && !SafeDirectoryExists(app.InstallLocation);
+        bool hasMissingDisplayIcon = !string.IsNullOrWhiteSpace(app.DisplayIconPath)
+            && !File.Exists(app.DisplayIconPath);
+        bool hasMissingUninstallTarget = !string.IsNullOrWhiteSpace(app.UninstallCommandPath)
+            && !File.Exists(app.UninstallCommandPath);
+
+        return executables.Count == 0
+            && (hasMissingInstallLocation || hasMissingDisplayIcon || hasMissingUninstallTarget);
     }
 
     private IReadOnlyList<ExecutableEntry> InventoryDirectory(
@@ -273,25 +293,31 @@ public sealed class PcViewScanner
                     continue;
                 }
 
+                var displayIconPath = PathHelpers.ExtractExecutablePath(key.GetValue("DisplayIcon") as string);
+                var uninstallCommand = key.GetValue("UninstallString") as string;
+                var uninstallCommandPath = PathHelpers.ExtractExecutablePath(uninstallCommand);
+                var registryKeyPath = $"{hive.Name}\\{path}\\{subkeyName}";
                 var installLocation = Expand(key.GetValue("InstallLocation") as string)?.Trim('"');
                 if (string.IsNullOrWhiteSpace(installLocation))
                 {
-                    var icon = PathHelpers.ExtractExecutablePath(key.GetValue("DisplayIcon") as string);
-                    if (!string.IsNullOrWhiteSpace(icon) && File.Exists(icon))
+                    if (!string.IsNullOrWhiteSpace(displayIconPath) && File.Exists(displayIconPath))
                     {
-                        installLocation = Path.GetDirectoryName(icon);
+                        installLocation = Path.GetDirectoryName(displayIconPath);
                     }
                 }
 
                 apps.Add(new AppEntry
                 {
-                    Id = PathHelpers.StableId($"{hive.Name}\\{path}\\{subkeyName}"),
+                    Id = PathHelpers.StableId(registryKeyPath),
                     Name = displayName,
                     Publisher = key.GetValue("Publisher") as string ?? "",
                     Version = key.GetValue("DisplayVersion") as string ?? "",
                     InstallDate = key.GetValue("InstallDate") as string ?? "",
                     InstallLocation = installLocation,
-                    UninstallCommand = key.GetValue("UninstallString") as string,
+                    UninstallCommand = uninstallCommand,
+                    RegistryKeyPath = registryKeyPath,
+                    DisplayIconPath = displayIconPath,
+                    UninstallCommandPath = uninstallCommandPath,
                     Source = AppSource.Registry
                 });
             }

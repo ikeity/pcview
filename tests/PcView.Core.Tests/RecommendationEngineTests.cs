@@ -53,4 +53,21 @@ public sealed class RecommendationEngineTests
         Assert.AreEqual(RecommendationLevel.Keep, recommendation.Level);
         CollectionAssert.Contains(recommendation.Reasons.ToList(), "Recent or clearly registered");
     }
+
+    [TestMethod]
+    public void Evaluate_MarksPotentialUninstallEntryResidueForReview()
+    {
+        var recommendation = _engine.Evaluate(new AppEntry
+        {
+            Id = "residue",
+            Name = "Removed Game",
+            Publisher = "Game Publisher",
+            Source = AppSource.Registry,
+            IsPotentialUninstallEntryResidue = true,
+            LastRunEvidence = new EvidenceRecord(DateTimeOffset.UtcNow.AddDays(-10), "prefetch", EvidenceConfidence.Medium)
+        });
+
+        Assert.AreEqual(RecommendationLevel.Review, recommendation.Level);
+        CollectionAssert.Contains(recommendation.Reasons.ToList(), "Potential uninstall entry residue");
+    }
 }

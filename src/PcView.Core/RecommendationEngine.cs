@@ -19,6 +19,12 @@ public sealed class RecommendationEngine
             reasons.Add("Not in uninstall list");
         }
 
+        if (app.IsPotentialUninstallEntryResidue)
+        {
+            level = RecommendationLevel.Review;
+            reasons.Add("Potential uninstall entry residue");
+        }
+
         if (string.IsNullOrWhiteSpace(app.Publisher))
         {
             reasons.Add("Unknown publisher");
